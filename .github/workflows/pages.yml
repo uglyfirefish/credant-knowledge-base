@@ -6,14 +6,18 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 确保允许写入 gh-pages 分支
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
+          cache: 'npm'  # 启用缓存加速安装
       - name: Build Docs
         run: |
+          npm config set registry https://registry.npm.taobao.org
           npm install -g docsify-cli
           docsify serve docs --port 3000 > /dev/null 2>&1 &
           npx gh-pages -d docs -t true
