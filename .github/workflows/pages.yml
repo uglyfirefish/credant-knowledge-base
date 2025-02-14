@@ -1,55 +1,39 @@
-name: Deploy Documentation
+name: CI/CD-Deploy
 
 on:
-<<<<<<< HEAD
   push:
-    branches: [main]
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency: 
+  group: "pages-deploy"
+  cancel-in-progress: true
 
 jobs:
   deploy:
+    name: GitHub Pages
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 关键权限
-    steps:
-      - uses: actions/checkout@v4
+      contents: write
+      pages: write
+      id-token: write
 
-      - name: Setup Node.js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: 'npm'
+          node-version: 20
+          cache: "npm"
 
-      - name: Deploy to Pages
-        run: |
-          npm install -g gh-pages
-          npx gh-pages -d docs -t true
-=======
-  push:
-    branches: [main]   # 仅在main分支触发
+      - name: Install Docsify
+        run: npm install -g docsify-cli@latest
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    permissions:      # 关键权限申明
-      contents: write
-      pages: write
-      id-token: write
+      - name: Build
+        run: docsify serve docs --port 3000 2>&1 | tee output.log &
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: "npm"
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v2  # 官方推荐的最新方式
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          target-branch: gh-pages      # 指定部署到gh-pages分支
-          publish-dir: ./docs          # 源文件来自docs目录
-
->>>>>>> 6e868cc (修复GitHub Actions配置，规范gh-pages部署流程)
+      - name: Deploy
+        uses: actions/deploy-pages@v2
+        timeout-minutes: 3
