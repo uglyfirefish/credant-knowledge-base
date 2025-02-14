@@ -1,17 +1,23 @@
-name: CI/CD-Deploy
+# .github/workflows/pages.yml
+
+name: CI/CD-Docsify-Deploy
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
-concurrency: 
-  group: "pages-deploy"
+concurrency:
+  group: 'pages-${{ github.ref }}'
   cancel-in-progress: true
+
+env:
+  DOCS_DIR: ./docs
+  NODE_VERSION: 20
 
 jobs:
   deploy:
-    name: GitHub Pages
+    name: GitHub Pages Deployment
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -19,21 +25,57 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Node
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v3
         with:
-          node-version: 20
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Install Docsify
-        run: npm install -g docsify-cli@latest
+      - name: Install Project Dependencies
+        run: |
+          npm ci --omit=optional --no-audit
+          npm install docsify-cli@7 --no-save
 
-      - name: Build
-        run: docsify serve docs --port 3000 2>&1 | tee output.log &
+      - name: Validate Documentation Structure
+        run: |
+          npx docsify init --local $DOCS_DIR
+          npx docsify generate $DOCS_DIR
+          [ -f "$DOCS_DIR/index.html" ] || (echo "❌ 索引文件生成失败"; exit 1)
 
-      - name: Deploy
+      - name: Configure Cloudflare Cache Header
+        run: |
+          echo "# Warp Stabilization" > $DOCS_DIR/_headers
+          echo "/*\n  CF-Static-Distribution: static_site" >> $DOCS_DIR/_headers
+
+      - name: Build Preflight Check
+        run: |
+          npx docsify serve $DOCS_DIR --port 3000 --open false &
+          sleep 5
+          http_code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000)
+          [ "$http_code" -eq 200 ] || (echo "❌ 服务预检失败: HTTP $http_code"; exit 125)
+
+      - name: Deployment to GitHub Pages
         uses: actions/deploy-pages@v2
-        timeout-minutes: 3
+        timeout-minutes: 5
+        with:
+          artifact_name: documentation
+          target_branch: gh-pages
+          keep_history: true
+          publish_dir: ${{ env.DOCS_DIR }}
+          exclude_commit_metadata: true
+
+      - name: Post-Deployment Verification
+        run: |
+          DEPLOYED_URL="https://${{ github.repository_owner }}.github.io/${{ github.repository }}"          
+          for retry in {1..3}; do
+            http_code=$(curl -s -o /dev/null -w '%{http_code}' $DEPLOYED_URL)
+            [ "$http_code" -eq 200 ] && exit 0
+            sleep $((retry * 2))
+          done
+          echo "❌ 最终部署验证失败: HTTP $http_code"
+          exit 1
