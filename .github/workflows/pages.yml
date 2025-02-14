@@ -39,7 +39,7 @@ jobs:
       - name: Install Project Dependencies
         run: |
           npm ci --omit=optional --no-audit
-          nnpm install docsify-cli@latest --no-save  # 或精确指定 npm install docsify-cli@4.4.3
+          npm install docsify-cli@latest --no-save  # 或精确指定 npm install docsify-cli@4.4.3
 
       - name: Validate Documentation Structure
         run: |
