@@ -1,0 +1,19 @@
+name: Deploy Documentation
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Build Docs
+        run: |
+          npm install -g docsify-cli
+          docsify serve docs --port 3000 > /dev/null 2>&1 &
+          npx gh-pages -d docs -t true
