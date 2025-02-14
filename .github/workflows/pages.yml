@@ -1,6 +1,7 @@
 name: Deploy Documentation
 
 on:
+<<<<<<< HEAD
   push:
     branches: [main]
 
@@ -22,3 +23,33 @@ jobs:
         run: |
           npm install -g gh-pages
           npx gh-pages -d docs -t true
+=======
+  push:
+    branches: [main]   # 仅在main分支触发
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:      # 关键权限申明
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v2  # 官方推荐的最新方式
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          target-branch: gh-pages      # 指定部署到gh-pages分支
+          publish-dir: ./docs          # 源文件来自docs目录
+
+>>>>>>> 6e868cc (修复GitHub Actions配置，规范gh-pages部署流程)
